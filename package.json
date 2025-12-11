@@ -1,5 +1,5 @@
 {
-  "name": "twinkle",
+  "name": "cursorhack",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,17 +9,33 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "next": "16.0.8",
-    "react": "19.2.1",
-    "react-dom": "19.2.1"
+    "@elevenlabs/elevenlabs-js": "^2.25.1",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "framer-motion": "^11.18.2",
+    "framer-motion-3d": "^11.18.2",
+    "gsap": "^3.13.0",
+    "jotai": "^2.15.2",
+    "maath": "^0.10.8",
+    "next": "16.0.7",
+    "openai": "^6.10.0",
+    "pixi.js": "^8.14.3",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "three": "^0.181.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.0.8",
+    "eslint-config-next": "16.0.7",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
