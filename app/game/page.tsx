@@ -3,7 +3,10 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useFBX, useAnimations, Text, Environment, OrbitControls, Cloud, useTexture } from '@react-three/drei';
+
 import * as THREE from 'three';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 // --- Constants ---
 const LANE_WIDTH = 2; // Width of each lane
@@ -39,8 +42,13 @@ function Player({
 
             if (action) {
                 // Fix: Remove position tracks to prevent root motion (snapping back)
+                // Use a more robust regex to catch all position-related tracks
                 const clip = action.getClip();
-                clip.tracks = clip.tracks.filter(track => !track.name.includes('.position'));
+                clip.tracks = clip.tracks.filter(track => !track.name.match(/position/i));
+
+                // Ensure the action loops
+                action.setLoop(THREE.LoopRepeat, Infinity);
+                action.clampWhenFinished = false;
 
                 action.reset().fadeIn(0.5).play();
             }
@@ -81,22 +89,92 @@ function Player({
     );
 }
 
+function Rock({ position, scale = 1, visible = true }: { position: [number, number, number], scale?: number, visible?: boolean }) {
+    if (!visible) return null;
+    return (
+        <mesh position={position} scale={scale} castShadow receiveShadow>
+            <dodecahedronGeometry args={[1, 0]} />
+            <meshStandardMaterial color="#808080" roughness={0.9} />
+        </mesh>
+    );
+}
+
+function Explosion({ position, onComplete }: { position: [number, number, number], onComplete: () => void }) {
+    const particles = useMemo(() => {
+        return new Array(15).fill(0).map(() => ({
+            velocity: [
+                (Math.random() - 0.5) * 10,
+                (Math.random() - 0.5) * 10 + 5, // Upward bias
+                (Math.random() - 0.5) * 10
+            ] as [number, number, number],
+            scale: Math.random() * 0.3 + 0.1,
+            offset: [
+                (Math.random() - 0.5) * 0.5,
+                (Math.random() - 0.5) * 0.5,
+                (Math.random() - 0.5) * 0.5
+            ] as [number, number, number]
+        }));
+    }, []);
+
+    const group = useRef<THREE.Group>(null);
+    const [time, setTime] = useState(0);
+
+    useFrame((state, delta) => {
+        setTime(t => t + delta);
+        if (time > 1.5) {
+            onComplete();
+            return;
+        }
+
+        if (group.current) {
+            group.current.children.forEach((child, i) => {
+                const p = particles[i];
+                child.position.x += p.velocity[0] * delta;
+                child.position.y += p.velocity[1] * delta;
+                child.position.z += p.velocity[2] * delta;
+
+                // Gravity
+                p.velocity[1] -= 20 * delta;
+
+                // Rotation
+                child.rotation.x += delta * 2;
+                child.rotation.z += delta * 2;
+            });
+        }
+    });
+
+    return (
+        <group ref={group} position={position}>
+            {particles.map((p, i) => (
+                <mesh key={i} position={p.offset} scale={p.scale}>
+                    <dodecahedronGeometry args={[1, 0]} />
+                    <meshStandardMaterial color="#606060" />
+                </mesh>
+            ))}
+        </group>
+    );
+}
+
 function AnswerGate({
     position,
     text,
-    color = "#ff0000"
+    color = "#ff0000",
+    showRock = true
 }: {
     position: [number, number, number],
     text: string,
-    color?: string
+    color?: string,
+    showRock?: boolean
 }) {
     return (
         <group position={position}>
+            {/* Rock behind text - Moved further back */}
+            <Rock position={[0, 1, -1.5]} scale={1.5} visible={showRock} />
             {/* Gate Frame Removed */}
 
-            {/* Answer Text */}
+            {/* Answer Text - Moved slightly forward */}
             <Text
-                position={[0, 2, 0]}
+                position={[0, 2, 0.5]}
                 fontSize={1}
                 color="white"
                 anchorX="center"
@@ -110,15 +188,25 @@ function AnswerGate({
     );
 }
 
+function Mushroom({ position }: { position: [number, number, number] }) {
+    const fbx = useFBX('/gardenAssets/mushroom.fbx');
+    return <primitive object={fbx.clone()} position={position} scale={0.05} />;
+}
+
 import { Tree } from '@/components/garden/Tree';
 
 function BeachEnvironment() {
     const sandTexture = useTexture('/hellokitty/sand.png');
+    const grassTexture = useTexture('/gardenAssets/grasstexture.png');
 
     // Configure texture repeating
     sandTexture.wrapS = THREE.RepeatWrapping;
     sandTexture.wrapT = THREE.RepeatWrapping;
-    sandTexture.repeat.set(1, 100); // Adjust repeat based on length
+    sandTexture.repeat.set(1, 100);
+
+    grassTexture.wrapS = THREE.RepeatWrapping;
+    grassTexture.wrapT = THREE.RepeatWrapping;
+    grassTexture.repeat.set(20, 100);
 
     // Generate some random decorations along the track
     const decorations = useMemo(() => {
@@ -133,16 +221,24 @@ function BeachEnvironment() {
             if (Math.random() > 0.3) {
                 items.push(<Tree key={`r-${z}`} position={[5 + Math.random() * 5, 0, z]} />);
             }
+
+            // Mushrooms
+            if (Math.random() > 0.7) {
+                items.push(<Mushroom key={`m-l-${z}`} position={[-4 - Math.random() * 3, 0, z]} />);
+            }
+            if (Math.random() > 0.7) {
+                items.push(<Mushroom key={`m-r-${z}`} position={[4 + Math.random() * 3, 0, z]} />);
+            }
         }
         return items;
     }, []);
 
     return (
         <group>
-            {/* Sand Ground (Base) */}
+            {/* Grass Ground (Base) */}
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.2, -500]} receiveShadow>
                 <planeGeometry args={[200, 1000]} />
-                <meshStandardMaterial color="#4caf50" />
+                <meshStandardMaterial map={grassTexture} />
             </mesh>
 
             {/* Runway with Sand Texture */}
@@ -184,24 +280,94 @@ function StartScreen({ onStart }: { onStart: () => void }) {
     );
 }
 
+function Sparkles() {
+    const [exploded, setExploded] = useState(false);
+
+    useEffect(() => {
+        requestAnimationFrame(() => setExploded(true));
+    }, []);
+
+    const sparkles = useMemo(() => Array.from({ length: 40 }).map((_, i) => {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 200 + Math.random() * 200; // Explode radius
+        return {
+            id: i,
+            endX: Math.cos(angle) * radius,
+            endY: Math.sin(angle) * radius,
+            color: ['#FFD700', '#FFA500', '#FFFFFF'][Math.floor(Math.random() * 3)],
+            delay: Math.random() * 0.2,
+            scale: 0.5 + Math.random() * 1
+        };
+    }), []);
+
+    return (
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-visible">
+            {sparkles.map(s => (
+                <div
+                    key={s.id}
+                    className={`absolute rounded-full transition-all duration-1000 ease-out ${exploded ? 'opacity-0' : 'opacity-100'}`}
+                    style={{
+                        width: '12px',
+                        height: '12px',
+                        backgroundColor: s.color,
+                        transform: exploded
+                            ? `translate(${s.endX}px, ${s.endY}px) scale(0)`
+                            : `translate(0px, 0px) scale(${s.scale})`,
+                        transitionDelay: `${s.delay}s`
+                    }}
+                />
+            ))}
+        </div>
+    );
+}
+
 function GameOverScreen({ result, onRestart }: { result: 'correct' | 'wrong', onRestart: () => void }) {
     const isWin = result === 'correct';
+    const router = useRouter();
+
+    useEffect(() => {
+        if (isWin) {
+            const timer = setTimeout(() => {
+                router.push('/room');
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [isWin, router]);
+
+    if (isWin) {
+        return (
+            <div
+                onClick={onRestart}
+                className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md cursor-pointer"
+            >
+                <div className="relative flex items-center justify-center">
+                    <Sparkles />
+                    <div className="relative w-[700px] h-[700px] animate-in zoom-in duration-500">
+                        <Image
+                            src="/welldone.png"
+                            alt="Well Done"
+                            fill
+                            className="object-contain drop-shadow-[0_0_50px_rgba(255,215,0,0.5)]"
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md">
             <div className="bg-white p-10 rounded-3xl shadow-2xl flex flex-col items-center animate-in fade-in zoom-in duration-300 text-center">
-                <div className="text-6xl mb-4">
-                    {isWin ? '🎉' : '💥'}
-                </div>
-                <h2 className={`text-4xl font-black mb-2 ${isWin ? 'text-green-500' : 'text-red-500'}`}>
-                    {isWin ? 'Correct!' : 'Wrong Answer!'}
+                <div className="text-6xl mb-4">💥</div>
+                <h2 className="text-4xl font-black mb-2 text-red-500">
+                    Wrong Answer!
                 </h2>
                 <p className="text-slate-500 mb-8 text-lg">
-                    {isWin ? 'Great job! Keep running!' : 'Oops! Better luck next time.'}
+                    Oops! Better luck next time.
                 </p>
                 <button
                     onClick={onRestart}
-                    className={`px-8 py-4 text-white text-xl font-bold rounded-full shadow-lg hover:scale-105 hover:shadow-xl transition-all active:scale-95 ${isWin ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'
-                        }`}
+                    className="px-8 py-4 bg-red-500 hover:bg-red-600 text-white text-xl font-bold rounded-full shadow-lg hover:scale-105 hover:shadow-xl transition-all active:scale-95"
                 >
                     Play Again
                 </button>
@@ -215,16 +381,32 @@ export default function GamePage() {
     const [playerZ, setPlayerZ] = useState(0);
     const [gameState, setGameState] = useState<'menu' | 'playing' | 'correct' | 'wrong'>('menu');
     const [gameId, setGameId] = useState(0); // Used to reset the scene
+    const [explosions, setExplosions] = useState<{ id: number, position: [number, number, number] }[]>([]);
+    const [explodedGates, setExplodedGates] = useState<Set<number>>(new Set()); // Track which gates have exploded
+
+    const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
 
     // Quiz Configuration
-    const quiz = {
-        question: "Which is the correct spelling of jump?",
-        answers: [
-            { text: "gump", lane: -1, isCorrect: false }, // Left
-            { text: "jump", lane: 1, isCorrect: true },   // Right
-        ],
-        zDistance: -50 // Distance where the gates are located
-    };
+    const quizzes = useMemo(() => [
+        {
+            question: "1 + 2 = ?",
+            answers: [
+                { text: "4", lane: -1, isCorrect: false }, // Left
+                { text: "3", lane: 1, isCorrect: true },   // Right
+            ],
+            zDistance: -50
+        },
+        {
+            question: "3 + 1 = ?",
+            answers: [
+                { text: "4", lane: -1, isCorrect: true }, // Left
+                { text: "5", lane: 1, isCorrect: false }, // Right
+            ],
+            zDistance: -100
+        }
+    ], []);
+
+    const currentQuiz = quizzes[currentQuizIndex] || quizzes[quizzes.length - 1];
 
     const startGame = () => {
         setGameState('playing');
@@ -232,8 +414,12 @@ export default function GamePage() {
 
     const resetGame = () => {
         setGameId(prev => prev + 1);
+
         setLane(0);
         setPlayerZ(0);
+        setCurrentQuizIndex(0);
+        setExplosions([]);
+        setExplodedGates(new Set());
         setGameState('playing'); // Restart immediately
     };
 
@@ -260,18 +446,49 @@ export default function GamePage() {
         // Check if player has passed the gate
         // Player moves in negative Z. Gate is at quiz.zDistance (e.g., -50).
         // When playerZ <= -50, they have passed/hit the gate.
-        if (playerZ <= quiz.zDistance + 1) { // +1 buffer
+        // Check if player has passed the current gate
+        const activeQuiz = quizzes[currentQuizIndex];
+        if (!activeQuiz) return;
+
+        if (playerZ <= activeQuiz.zDistance + 1) { // +1 buffer
             // Determine which answer was chosen
-            const chosenAnswer = quiz.answers.find(a => a.lane === lane);
+            const chosenAnswer = activeQuiz.answers.find(a => a.lane === lane);
 
             if (chosenAnswer) {
                 if (chosenAnswer.isCorrect) {
-                    setGameState('correct');
+                    // Trigger explosion if not already exploded
+                    const gateId = currentQuizIndex * 10 + activeQuiz.answers.indexOf(chosenAnswer);
+
+                    if (!explodedGates.has(gateId)) {
+                        setExplosions(prev => [...prev, {
+                            id: Date.now(),
+                            position: [chosenAnswer.lane * LANE_WIDTH, 0, activeQuiz.zDistance]
+                        }]);
+                        setExplodedGates(prev => new Set(prev).add(gateId));
+
+                        // Move to next quiz if available, otherwise win or loop? 
+                        // For now, let's just show "Correct" briefly or keep running?
+                        // The original logic showed a "Correct" screen which stopped the game.
+                        // If we want multiple questions, we shouldn't stop on the first one.
+
+                        if (currentQuizIndex < quizzes.length - 1) {
+                            // Advance to next question
+                            setCurrentQuizIndex(prev => prev + 1);
+                            // Don't show game over screen, just continue
+                        } else {
+                            // Final question answered correctly
+                            setGameState('correct');
+                        }
+                    }
                 } else {
                     setGameState('wrong');
                 }
             } else {
-                // Middle lane or empty lane
+                // Middle lane or empty lane - if they pass the gate without hitting an answer?
+                // The original logic assumed they MUST hit something or it's wrong?
+                // If they are in the middle (lane 0) and there is no answer there, they just run past?
+                // But the gates are usually blocking.
+                // Let's assume they must pick a side.
                 setGameState('wrong');
             }
         }
@@ -284,8 +501,8 @@ export default function GamePage() {
 
                 {/* Quiz Header - Always Visible */}
                 <div className="absolute top-8 bg-white/90 backdrop-blur px-8 py-4 rounded-2xl shadow-xl transform transition-transform duration-500 hover:scale-105">
-                    <h1 className="text-4xl font-bold text-slate-800 text-center">H Quiz</h1>
-                    <p className="text-6xl font-black text-indigo-600 mt-2 text-center">{quiz.question}</p>
+                    <h1 className="text-4xl font-bold text-slate-800 text-center">Quiz</h1>
+                    <p className="text-6xl font-black text-indigo-600 mt-2 text-center">{currentQuiz.question}</p>
                 </div>
 
                 {/* Menu / Start Screen */}
@@ -314,6 +531,7 @@ export default function GamePage() {
                             onClick={() => {
                                 setPlayerZ(0);
                                 setLane(0);
+                                setCurrentQuizIndex(0);
                                 setGameState('playing');
                             }}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white text-xl font-bold py-3 px-8 rounded-full shadow-lg transition-all hover:scale-105"
@@ -326,9 +544,11 @@ export default function GamePage() {
 
             {/* Screens */}
             {gameState === 'menu' && <StartScreen onStart={startGame} />}
-            {(gameState === 'correct' || gameState === 'wrong') && (
-                <GameOverScreen result={gameState} onRestart={resetGame} />
-            )}
+            {
+                (gameState === 'correct' || gameState === 'wrong') && (
+                    <GameOverScreen result={gameState} onRestart={resetGame} />
+                )
+            }
 
             {/* Controls Hint */}
             <div className="absolute bottom-8 left-0 w-full text-center z-10 pointer-events-none transition-opacity duration-300" style={{ opacity: gameState === 'playing' ? 1 : 0 }}>
@@ -351,20 +571,33 @@ export default function GamePage() {
                     <Player lane={lane} setZPosition={setPlayerZ} active={gameState === 'playing'} />
                     <BeachEnvironment />
 
-                    {/* Render Answer Gates */}
-                    {quiz.answers.map((ans, i) => (
-                        <AnswerGate
-                            key={i}
-                            position={[ans.lane * LANE_WIDTH, 0, quiz.zDistance]}
-                            text={ans.text}
-                            color={ans.isCorrect ? "#4ade80" : "#f87171"}
+                    {/* Render Answer Gates for ALL quizzes */}
+                    {quizzes.map((q, qIndex) => (
+                        <group key={qIndex}>
+                            {q.answers.map((ans, aIndex) => (
+                                <AnswerGate
+                                    key={`${qIndex}-${aIndex}`}
+                                    position={[ans.lane * LANE_WIDTH, 0, q.zDistance]}
+                                    text={ans.text}
+                                    color={ans.isCorrect ? "#4ade80" : "#f87171"}
+                                    showRock={!explodedGates.has(qIndex * 10 + aIndex)}
+                                />
+                            ))}
+                        </group>
+                    ))}
+
+                    {/* Render Explosions */}
+                    {explosions.map(expl => (
+                        <Explosion
+                            key={expl.id}
+                            position={expl.position}
+                            onComplete={() => setExplosions(prev => prev.filter(e => e.id !== expl.id))}
                         />
                     ))}
                 </group>
 
                 <fog attach="fog" args={['#87CEEB', 20, 100]} />
             </Canvas>
-        </div>
+        </div >
     );
 }
-
