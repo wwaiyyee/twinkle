@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 
 import React from "react";
 import { Geist, Geist_Mono, Inter, Nunito, Comfortaa, Quicksand, Chewy, Rubik, Bubblegum_Sans, Bungee, Luckiest_Guy, Bangers } from "next/font/google";
-import localFont from "next/font/local";
 import "./globals.css";
 
 
@@ -76,6 +75,8 @@ const bangers = Bangers({
   weight: ["400"],
 });
 
+import localFont from "next/font/local";
+
 const dynaPuff = localFont({
   src: "../public/fonts/DynaPuff-VariableFont_wdth,wght.ttf",
   variable: "--font-dynapuff",
@@ -94,7 +95,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-
+        suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${nunito.variable} ${comfortaa.variable} ${quicksand.variable} ${chewy.variable} ${rubik.variable} ${bubblegumSans.variable} ${bungee.variable} ${luckiestGuy.variable} ${bangers.variable} ${dynaPuff.variable} antialiased`}
       >
         {children}
