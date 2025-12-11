@@ -7,7 +7,7 @@ import MetaCluster from "./navbar/MetaCluster";
 
 export default function RoomNavbar() {
     return (
-        <div className="absolute top-0 left-0 w-full p-6 grid grid-cols-3 items-start pointer-events-none z-50" style={{ fontFamily: 'var(--font-dynapuff)' }}>
+        <div className="absolute top-0 left-0 w-full px-6 pt-0 grid grid-cols-3 items-start pointer-events-none z-50 font-dynapuff" style={{ fontFamily: 'var(--font-dynapuff)' }}>
             {/* Left Cluster - Profile */}
             <div className="justify-self-start">
                 <ProfileCluster />
