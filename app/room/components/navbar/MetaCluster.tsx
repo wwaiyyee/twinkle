@@ -1,18 +1,18 @@
 "use client";
 
-import React from "react";
+import Link from "next/link";
 
 export default function MetaCluster() {
     return (
         <div className="pointer-events-auto flex flex-col gap-3 items-end mt-4">
             <div className="flex items-center gap-3">
                 {/* Dashboard Button */}
-                <button className="bg-[#FFF5E1] border-4 border-[#5C3A21] shadow-[0_4px_0_#4A2E1A] py-0 pr-6 pl-8 rounded-3xl ml-6 relative flex items-center gap-2 hover:bg-[#FFE4B5] transition-colors group">
+                <Link href="/dashboard" className="bg-[#FFF5E1] border-4 border-[#5C3A21] shadow-[0_4px_0_#4A2E1A] py-0 pr-6 pl-8 rounded-3xl ml-6 relative flex items-center gap-2 hover:bg-[#FFE4B5] transition-colors group">
                     <div className="w-16 h-16 flex items-center justify-center -ml-14 z-10">
                         <img src="/Navbar/Dashboard.png" alt="Dashboard" className="w-full h-full object-contain drop-shadow-sm" />
                     </div>
                     <span className="font-bold text-[#5C3A21] text-xl">Dashboard</span>
-                </button>
+                </Link>
 
                 {/* Attention Meter */}
                 <div className="bg-[#FFF5E1] border-4 border-[#5C3A21] shadow-[0_4px_0_#4A2E1A] py-0 pr-6 pl-8 rounded-3xl ml-6 relative flex items-center gap-3 w-48">
