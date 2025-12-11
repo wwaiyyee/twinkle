@@ -66,38 +66,15 @@ This combination of technologies ensures that Twinkle is both a fun and educatio
 - **Collaboration with Schools:** In the future, we hope to collaborate with educational institutions to integrate Twinkle as a part of their curriculum, providing teachers with tools and insights on how to engage ADHD students.
 
 ## Built With
-- Anthropic
 - API
 - CodeRabbit
-- Cursor
 - ElevenLabs
 - Express.js
 - Next.js
 - React
-- React Three Drei
 - Tailwind CSS
 - Three.js
 
 ## Try it out
 - [Live Demo](https://cursorhack-twinkle.vercel.app)
 - [GitHub Repo](https://github.com/wwaiyyee/twinkle)
-
----
-
-## Getting Started
-
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
