@@ -140,7 +140,7 @@ const ChatBox: React.FC<ChatBoxProps> = ({ isOpen, onClose, onSubmit }) => {
       {/* Main Container */}
       <div
         className={`
-          fixed top-[65%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] ml-4
+          fixed top-[60%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] ml-4
           transition-all duration-200 ease-out
           ${isOpen ? "opacity-100 scale-100" : "opacity-0 scale-90 pointer-events-none"}
         `}
